@@ -32,6 +32,13 @@ const PAL = [
 const UCOLS = ['#0066ff','#ff2d78','#ffee00','#00cc66','#8b5cf6','#ff6600','#00ccff','#ff2200','#44ff88','#ff44cc'];
 const PIXEL_SIZE = 10;
 
+let _renderScheduled = false;
+function scheduleRender() {
+  if (_renderScheduled) return;
+  _renderScheduled = true;
+  requestAnimationFrame(() => { _renderScheduled = false; render(); });
+}
+
 /* ── STATE ── */
 let pseudo = '', myColor = '', myDiscordId = null, myDiscordUser = null, sessionToken = null;
 let isAdmin = false;
@@ -274,7 +281,7 @@ socket.on('pixel:batch', (changes) => {
     if (p.color === null) pixels.delete(k);
     else pixels.set(k, { color: p.color, owner: p.owner, ownerColor: p.ownerColor });
   }
-  mmDirty = true; render();
+  mmDirty = true; scheduleRender();
 });
 
 socket.on('canvas:full', (canvas) => {
@@ -1265,3 +1272,4 @@ document.getElementById('rename-input').addEventListener('keydown', e => { if (e
   // Appliquer l'auth Discord au chargement
   initAuth();
 })();
+
