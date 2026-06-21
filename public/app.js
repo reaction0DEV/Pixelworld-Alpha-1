@@ -69,7 +69,24 @@ function getUrlParam(name) {
 }
 
 async function initAuth() {
-  // 1. Récupérer le token depuis l'URL si présent
+  // 1. Vérifier d'abord les cookies (session persistante)
+  try {
+    const cookieRes = await fetch('/auth/current-session');
+    const cookieData = await cookieRes.json();
+    if (cookieData.valid) {
+      // Session cookie valide - connexion automatique
+      sessionToken = 'cookie_session'; // Marqueur spécial pour les cookies
+      currentUser = cookieData;
+      showLoginSuccess(cookieData.username, cookieData.avatar);
+      initSocket();
+      loadThemePreference();
+      return;
+    }
+  } catch (err) {
+    console.error('Erreur vérification cookie:', err);
+  }
+
+  // 2. Récupérer le token depuis l'URL si présent
   const tokenFromUrl = getUrlParam('token');
   const errorFromUrl = getUrlParam('error');
 
@@ -129,7 +146,8 @@ function onDiscordLogin(session) {
   document.getElementById('screen-login').style.display = 'none';
   document.getElementById('screen-lobby').classList.add('on');
 
-  setTheme(localStorage.getItem('pw_theme') || 'light');
+  // Charger la préférence de thème (avec détection système)
+  loadThemePreference();
   socket.emit('lobby:list');
 
   // Valider aussi via socket pour que le serveur sache qu'on est connecté
@@ -1203,6 +1221,30 @@ function exportPNG() {
 /* ── THEME / SETTINGS / MODAL ── */
 function setTheme(t) { document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : ''); localStorage.setItem('pw_theme', t); mmDirty = true; render(); }
 function toggleTheme() { setTheme((localStorage.getItem('pw_theme') || 'light') === 'dark' ? 'light' : 'dark'); }
+
+// Charger la préférence de thème et détecter les préférences système
+function loadThemePreference() {
+  // Vérifier si l'utilisateur a une préférence enregistrée
+  const savedTheme = localStorage.getItem('pw_theme');
+  if (savedTheme) {
+    setTheme(savedTheme);
+    return;
+  }
+  
+  // Sinon, utiliser les préférences système (dark mode)
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    setTheme('dark');
+  } else {
+    setTheme('light');
+  }
+  
+  // Écouter les changements de préférences système
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (!localStorage.getItem('pw_theme')) { // Seulement si pas de préférence explicite
+      setTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+}
 function setSettings(open) { if (open) openModal('modal-settings'); else closeModal('modal-settings'); }
 function openModal(id)  { document.getElementById(id).classList.add('on'); }
 function closeModal(id) { document.getElementById(id).classList.remove('on'); }

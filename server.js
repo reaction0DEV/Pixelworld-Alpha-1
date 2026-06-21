@@ -15,6 +15,8 @@ const bcrypt   = require('bcryptjs');
 const crypto   = require('crypto');
 const path     = require('path');
 const fs       = require('fs');
+const cookieParser = require('cookie-parser');
+require('dotenv').config();
 
 const app    = express();
 const server = http.createServer(app);
@@ -31,15 +33,14 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
    CONFIG ADMIN — Discord IDs autorisés
    Remplacer par les vrais Discord User IDs
 ══════════════════════════════════════════ */
-const ADMIN_DISCORD_IDS = new Set([
-  'VOTRE_DISCORD_ID_ICI',   // ex: '123456789012345678'
-  // Ajouter d'autres IDs admin ici
-]);
+const ADMIN_DISCORD_IDS = new Set(
+  (process.env.ADMIN_DISCORD_IDS || 'VOTRE_DISCORD_ID_ICI').split(',').filter(id => id.trim())
+);
 
 /* OAuth Discord Config */
 const DISCORD_CLIENT_ID     = process.env.DISCORD_CLIENT_ID     || 'VOTRE_CLIENT_ID';
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || 'VOTRE_CLIENT_SECRET';
-const DISCORD_REDIRECT_URI  = process.env.DISCORD_REDIRECT_URI  || `http://localhost:${PORT}/auth/discord/callback`;
+const DISCORD_REDIRECT_URI  = process.env.DISCORD_REDIRECT_URI  || `https://pixelworld.gd-verse.duckdns.org/auth/discord/callback`;
 
 const SECURITY = {
   MAX_PIXELS_PER_SEC: 600, MAX_BATCH_SIZE: 512,
@@ -175,6 +176,16 @@ function countPixelsByPlayer(room){const counts={};for(const v of Object.values(
    DISCORD OAUTH
 ══════════════════════════════════════════ */
 app.use(express.json());
+app.use(cookieParser());
+
+/* Middleware pour vérifier les cookies de session */
+app.use((req, res, next) => {
+  if (req.cookies.pw_session && discordSessions.has(req.cookies.pw_session)) {
+    // Session valide - l'utilisateur est connecté
+    req.session = discordSessions.get(req.cookies.pw_session);
+  }
+  next();
+});
 
 /* Étape 1 : Rediriger vers Discord */
 app.get('/auth/discord', (req, res) => {
@@ -246,6 +257,15 @@ app.get('/auth/discord/callback', async (req, res) => {
     saveAccounts();
 
     console.log(`[discord] ${user.username} (${user.id}) connecté`);
+    
+    // Set persistent cookie for 30 days
+    res.cookie('pw_session', sessionToken, {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    });
+    
     res.redirect(`/?token=${sessionToken}`);
   } catch (err) {
     console.error('[discord] OAuth error:', err.message);
@@ -259,6 +279,24 @@ app.get('/auth/session', (req, res) => {
   if (!token || !discordSessions.has(token)) return res.json({ valid: false });
   const session = discordSessions.get(token);
   res.json({ valid: true, ...session });
+});
+
+/* Vérifier la session actuelle (via cookie) */
+app.get('/auth/current-session', (req, res) => {
+  if (req.session) {
+    res.json({ valid: true, ...req.session });
+  } else {
+    res.json({ valid: false });
+  }
+});
+
+/* Déconnexion */
+app.get('/auth/logout', (req, res) => {
+  if (req.cookies.pw_session) {
+    discordSessions.delete(req.cookies.pw_session);
+    res.clearCookie('pw_session');
+  }
+  res.redirect('/');
 });
 
 /* ══════════════════════════════════════════

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Data directory
+data/
+
+# PM2 and process files
+ecosystem.config.js
+.pm2/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.backup
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+
+# DuckDNS script
+duckdns-update.sh
