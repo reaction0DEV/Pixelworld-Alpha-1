@@ -82,11 +82,8 @@ async function initAuth() {
     const cookieData = await cookieRes.json();
     if (cookieData.valid) {
       // Session cookie valide - connexion automatique
-      sessionToken = 'cookie_session'; // Marqueur spécial pour les cookies
-      currentUser = cookieData;
-      showLoginSuccess(cookieData.username, cookieData.avatar);
-      initSocket();
-      loadThemePreference();
+      sessionToken = cookieData.token || 'cookie_session';
+      onDiscordLogin(cookieData);
       return;
     }
   } catch (err) {
