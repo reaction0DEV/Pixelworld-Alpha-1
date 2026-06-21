@@ -49,7 +49,7 @@ const SECURITY = {
   MAX_CHAT_HISTORY: 10,            // anti-spam: fenêtre historique
   MAX_PSEUDO_LEN: 18, MIN_PSEUDO_LEN: 2, MAX_ROOM_NAME_LEN: 32, MIN_ROOM_NAME_LEN: 2,
   HEX_RE: /^#[0-9a-fA-F]{6}$/, PSEUDO_RE: /^[a-zA-Z0-9_\-\.éèêëàâùûüîïôœçÉÈÊËÀÂÙÛÜÎÏÔŒÇ]+$/,
-  MAX_CANVAS_W: 1000, MAX_CANVAS_H: 1200, REPORT_THRESHOLD: 3,
+  MAX_CANVAS_W: 1000, MAX_CANVAS_H: 1200, REPORT_THRESHOLD: 3, MAX_PRIVATE_ROOMS: 120,
 };
 
 /* ── IP Banning ── */
@@ -506,6 +506,9 @@ io.on('connection', socket => {
     if(!name||name.length<SECURITY.MIN_ROOM_NAME_LEN)return cb({error:'Nom trop court'});
     if(name.length>SECURITY.MAX_ROOM_NAME_LEN)return cb({error:`Nom trop long`});
     if(color&&!validateHex(color))return cb({error:'Couleur invalide'});
+    // Vérifier la limite de rooms privées
+    const privateRoomCount = [...rooms.values()].filter(r => !r.isGeneral).length;
+    if (privateRoomCount >= SECURITY.MAX_PRIVATE_ROOMS) return cb({ error: `Limite de ${SECURITY.MAX_PRIVATE_ROOMS} rooms privées atteinte. Réessaie plus tard.` });
     const id=uuidv4().slice(0,8).toUpperCase();
     let passwordHash=null;
     if(password&&password.length>0)passwordHash=await bcrypt.hash(password,8);
@@ -969,7 +972,13 @@ function handleLeave(socket) {
     io.to(info.roomId).emit('chat:msg', {pseudo:'🏠 Room',color:'#0066ff',text:`${newOwner.pseudo} est le nouveau propriétaire.`,ts:Date.now(),system:true});
     broadcastRoomList();
   }
-  if (room.members.size === 0 && !room.isGeneral) { rooms.delete(info.roomId); recentLeft.delete(info.roomId); saveRooms(); broadcastRoomList(); }
+  if (room.members.size === 0 && !room.isGeneral) {
+    // On garde la room et son canvas — on ne supprime plus quand vide
+    // La room reste en mémoire et sur disque jusqu'à suppression manuelle par le owner
+    saveRooms();
+    broadcastRoomList();
+    console.log(`[room] Room ${info.roomId} vide mais conservée (canvas préservé)`);
+  }
 }
 
 setInterval(() => {
@@ -996,5 +1005,5 @@ app.use((req,res,next)=>{
 app.use(express.static(path.join(__dirname,'public')));
 app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
-server.listen(PORT,()=>console.log(`\n🎨 PixelWorld → http://localhost:${PORT}\n`));
+server.listen(PORT,()=>console.log(`\n🎨 PixelWorld de merde qui marche pas sa mere la pute (easter egg)→ http://localhost:${PORT}\n`));
 
