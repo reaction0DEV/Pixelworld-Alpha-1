@@ -20,7 +20,7 @@ require('dotenv').config();
 
 const app    = express();
 const server = http.createServer(app);
-const io     = new Server(server, { maxHttpBufferSize: 5e6 });
+const io     = new Server(server, { maxHttpBufferSize: 5e7 }); // 50MB
 
 const PORT       = process.env.PORT || 3000;
 const DATA_DIR   = path.join(__dirname, 'data');
@@ -49,7 +49,7 @@ const SECURITY = {
   MAX_CHAT_HISTORY: 10,            // anti-spam: fenêtre historique
   MAX_PSEUDO_LEN: 18, MIN_PSEUDO_LEN: 2, MAX_ROOM_NAME_LEN: 32, MIN_ROOM_NAME_LEN: 2,
   HEX_RE: /^#[0-9a-fA-F]{6}$/, PSEUDO_RE: /^[a-zA-Z0-9_\-\.éèêëàâùûüîïôœçÉÈÊËÀÂÙÛÜÎÏÔŒÇ]+$/,
-  MAX_CANVAS_W: 2000, MAX_CANVAS_H: 2000, REPORT_THRESHOLD: 3,
+  MAX_CANVAS_W: 1000, MAX_CANVAS_H: 1200, REPORT_THRESHOLD: 3,
 };
 
 /* ── IP Banning ── */
@@ -138,9 +138,39 @@ function saveRooms() {
     reports:r.reports||{},chatLog:(r.chatLog||[]).slice(-100),
     antiSpam:r.antiSpam||false,
   });
-  fs.writeFileSync(ROOMS_FILE,JSON.stringify(arr,null,2));
+  // Écriture atomique : fichier temporaire puis rename pour éviter la corruption
+  const tmpFile = ROOMS_FILE + '.tmp';
+  try {
+    fs.writeFileSync(tmpFile, JSON.stringify(arr, null, 2));
+    fs.renameSync(tmpFile, ROOMS_FILE);
+  } catch(e) {
+    console.error('[saveRooms] Erreur écriture:', e.message);
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
 }
-loadRooms(); setInterval(saveRooms,15000);
+loadRooms();
+
+/* ══════════════════════════════════════════
+   SYSTÈME DE SAUVEGARDE À DEUX VITESSES
+   - Debounce 1s  : après chaque action pixel (léger, par room)
+   - Toutes 90s   : sauvegarde complète de tous les canvases
+══════════════════════════════════════════ */
+const saveDebounce = new Map(); // roomId → timer
+
+function scheduleSave(roomId) {
+  if (saveDebounce.has(roomId)) clearTimeout(saveDebounce.get(roomId));
+  saveDebounce.set(roomId, setTimeout(() => {
+    saveRooms();
+    saveDebounce.delete(roomId);
+    console.log(`[save] Room ${roomId} sauvegardée (debounce)`);
+  }, 1000));
+}
+
+// Sauvegarde complète toutes les 90 secondes (flush garanti)
+setInterval(() => {
+  saveRooms();
+  console.log(`[save] Sauvegarde complète périodique (90s) — ${rooms.size} room(s)`);
+}, 90 * 1000);
 
 /* ── GENERAL LOBBIES ── */
 function createDefaultRooms(){
@@ -479,7 +509,7 @@ io.on('connection', socket => {
     const id=uuidv4().slice(0,8).toUpperCase();
     let passwordHash=null;
     if(password&&password.length>0)passwordHash=await bcrypt.hash(password,8);
-    const W=Math.min(Math.max(canvasW||800,100),2000),H=Math.min(Math.max(canvasH||600,100),2000);
+    const W=Math.min(Math.max(canvasW||800,100),1000),H=Math.min(Math.max(canvasH||600,100),1200);
     const room={id,name,owner:pseudo,ownerId:socket.id,ownerDiscordId:discordId||null,
       passwordHash,maxPlayers:Math.min(maxPlayers||50,200),canvas:{},members:new Map(),
       bannedSet:new Set(),mods:[],canvasW:W,canvasH:H,createdAt:Date.now(),
@@ -560,6 +590,8 @@ io.on('connection', socket => {
     if(changes.length){
       // Broadcaster a tout le monde dans la room (y compris l'emetteur)
       io.to(info.roomId).emit('pixel:batch', changes);
+      // Sauvegarder dans 1s (debounce — évite les écritures disque en rafale)
+      scheduleSave(info.roomId);
     }
   });
 
@@ -847,7 +879,7 @@ io.on('connection', socket => {
   socket.on('room:resize_canvas',(data,cb)=>{
     const info=sockets.get(socket.id); if(!info||!info.roomId)return cb?.({error:'Non connecté'});
     const room=rooms.get(info.roomId); if(!room||info.pseudo!==room.owner)return cb?.({error:'Réservé au propriétaire'});
-    const W=Math.min(Math.max(data.w||800,100),2000),H=Math.min(Math.max(data.h||600,100),2000);
+    const W=Math.min(Math.max(data.w||800,100),1000),H=Math.min(Math.max(data.h||600,100),1200);
     room.canvasW=W; room.canvasH=H;
     for(const k of Object.keys(room.canvas)){const[x,y]=k.split('_').map(Number);if(x>=W||y>=H)delete room.canvas[k];}
     room.protectedZones=(room.protectedZones||[]).map(z=>({...z,x2:Math.min(z.x2,W-1),y2:Math.min(z.y2,H-1)})).filter(z=>z.x1<W&&z.y1<H);
@@ -965,3 +997,4 @@ app.use(express.static(path.join(__dirname,'public')));
 app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
 server.listen(PORT,()=>console.log(`\n🎨 PixelWorld → http://localhost:${PORT}\n`));
+
