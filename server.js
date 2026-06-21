@@ -1005,4 +1005,4 @@ app.use((req,res,next)=>{
 app.use(express.static(path.join(__dirname,'public')));
 app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
-server.listen(PORT,()=>console.log(`\n🎨 PixelWorld → http://localhost:${PORT}\n`));
+server.listen(PORT,()=>console.log(`\n🎨 PixelNUL car ça marche pas la sav des machins→ http://localhost:${PORT}\n`));
