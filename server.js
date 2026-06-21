@@ -515,12 +515,13 @@ io.on('connection', socket => {
         if(!validateHex(color))continue;
         room.canvas[k]={color,owner:info.pseudo,ownerColor:info.color};
       }
-      changes.push({x,y,color,owner:info.pseudo,ownerColor:info.color});
+      // Pour une suppression on envoie color:null sans owner pour eviter confusion cote client
+      if(color===null) changes.push({x,y,color:null});
+      else changes.push({x,y,color,owner:info.pseudo,ownerColor:info.color});
     }
-    // FIX: émettre aussi au socket émetteur pour garantir la sync de suppression
     if(changes.length){
-      socket.to(info.roomId).emit('pixel:batch',changes);
-      socket.emit('pixel:batch:ack', changes); // confirmation au proprio
+      // Broadcaster a tout le monde dans la room (y compris l'emetteur)
+      io.to(info.roomId).emit('pixel:batch', changes);
     }
   });
 
