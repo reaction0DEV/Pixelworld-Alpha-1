@@ -259,16 +259,6 @@ socket.on('pixel:batch', (changes) => {
   mmDirty = true; render();
 });
 
-// ACK propre: confirme au dessinateur ses propres suppressions
-socket.on('pixel:batch:ack', (changes) => {
-  for (const p of changes) {
-    const k = `${p.x}_${p.y}`;
-    if (p.color === null) pixels.delete(k);
-    else pixels.set(k, { color: p.color, owner: p.owner, ownerColor: p.ownerColor });
-  }
-  mmDirty = true; render();
-});
-
 socket.on('canvas:full', (canvas) => {
   pixels.clear();
   for (const [k, v] of Object.entries(canvas)) pixels.set(k, v);
@@ -1072,8 +1062,15 @@ function setBrush(s) { brush = s; document.querySelectorAll('.bd').forEach(d => 
 function paintPx(x, y, c) {
   if (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) return;
   const k = `${x}_${y}`, before = pixels.get(k) || null;
-  if (c === null) { pixels.delete(k); pendingPixels[k] = { color: null }; }
-  else { pixels.set(k, { color: c, owner: pseudo, ownerColor: myColor }); pendingPixels[k] = { color: c }; }
+  if (c === null) {
+    // Suppression : on efface localement optimistiquement
+    // Le serveur va broadcaster pixel:batch a tout le monde pour confirmer
+    pixels.delete(k);
+    pendingPixels[k] = { color: null };
+  } else {
+    pixels.set(k, { color: c, owner: pseudo, ownerColor: myColor });
+    pendingPixels[k] = { color: c };
+  }
   if (!stroke[k]) stroke[k] = { before };
   stroke[k].after = c ? { color: c, owner: pseudo, ownerColor: myColor } : null;
   mmDirty = true;
