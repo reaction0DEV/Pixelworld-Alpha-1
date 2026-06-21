@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelWorld — Rooms</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a1a'/%3E%3Crect x='4' y='4' width='8' height='8' fill='%230066ff'/%3E%3Crect x='12' y='4' width='8' height='8' fill='%23ff2d78'/%3E%3Crect x='20' y='4' width='8' height='8' fill='%23ffee00'/%3E%3Crect x='4' y='12' width='8' height='8' fill='%2300cc66'/%3E%3Crect x='12' y='12' width='8' height='8' fill='%238b5cf6'/%3E%3Crect x='20' y='12' width='8' height='8' fill='%23ff6600'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#0066ff">
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f0f4;--bg2:#e4e4ec;--panel:#ffffff;--panel2:#f7f7fc;
+  --border:#d0d0e0;--border2:#b8b8d0;--text:#1a1a2e;--muted:#7878a0;
+  --accent:#0066ff;--pink:#ff2d78;--purple:#7c3aed;--green:#00cc66;--orange:#ff6600;--red:#e53935;
+  --shadow:0 2px 12px rgba(0,0,0,.10);--shadow-lg:0 8px 40px rgba(0,0,0,.15);
+}
+[data-theme="dark"]{
+  --bg:#07070f;--bg2:#0e0e1c;--panel:#0e0e1c;--panel2:#13131f;
+  --border:#1c1c30;--border2:#272740;--text:#d0d0e8;--muted:#505070;
+  --accent:#00f0ff;--pink:#ff2d78;--purple:#8b5cf6;--green:#00ff88;
+  --shadow:0 2px 12px rgba(0,0,0,.5);--shadow-lg:0 8px 40px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;height:100vh;overflow:hidden;user-select:none;}
+input,button,select,textarea{font-family:'JetBrains Mono',monospace;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pop-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes slide-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.6}}
+.odot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;flex-shrink:0;}
+
+/* ── LOGIN / DISCORD ── */
+#screen-login{position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+.lglow{position:absolute;width:600px;height:600px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(0,102,255,.1) 0%,transparent 65%);animation:glow 4s ease-in-out infinite;}
+.lbox{position:relative;background:var(--panel);border:1px solid var(--border2);width:400px;display:flex;flex-direction:column;gap:20px;padding:44px 48px;box-shadow:var(--shadow-lg);animation:pop-in .4s ease;}
+.llogo{font-family:'Silkscreen',monospace;font-size:28px;letter-spacing:4px;text-align:center;line-height:1.4;background:linear-gradient(135deg,var(--accent),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.lsub{font-size:10px;color:var(--muted);text-align:center;letter-spacing:1.5px;text-transform:uppercase;}
+.discord-btn{display:flex;align-items:center;justify-content:center;gap:12px;background:#5865F2;border:none;color:#fff;font-family:'Silkscreen',monospace;font-size:12px;padding:14px;cursor:pointer;letter-spacing:2px;transition:opacity .2s,transform .1s;text-decoration:none;}
+.discord-btn:hover{opacity:.88;transform:translateY(-1px);}
+.discord-btn svg{width:22px;height:22px;fill:#fff;flex-shrink:0;}
+.lerr{font-size:11px;color:var(--pink);background:rgba(255,45,120,.07);border:1px solid rgba(255,45,120,.2);padding:7px 10px;text-align:center;display:none;}
+.linfo{font-size:9px;color:var(--muted);text-align:center;line-height:1.6;}
+
+/* ── LOBBY ── */
+#screen-lobby{position:fixed;inset:0;z-index:800;display:none;flex-direction:column;background:var(--bg);}
+#screen-lobby.on{display:flex;}
+.lobby-nav{height:48px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;}
+.llogo-sm{font-family:'Silkscreen',monospace;font-size:13px;letter-spacing:3px;background:linear-gradient(90deg,var(--accent),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.nav-sep{width:1px;height:20px;background:var(--border);}
+.nav-user{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.nav-avatar{width:24px;height:24px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;}
+.nav-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.nav-name{font-size:11px;color:var(--accent);font-weight:700;}
+.nav-discord{font-size:9px;color:var(--muted);}
+.nav-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:10px;padding:5px 10px;cursor:pointer;letter-spacing:.5px;transition:border-color .2s;}
+.nav-btn:hover{border-color:var(--accent);}
+.nav-btn.red{border-color:rgba(229,57,53,.4);color:var(--red);}
+.nav-btn.red:hover{background:rgba(229,57,53,.1);}
+.nav-btn.purple{border-color:rgba(88,101,242,.6);background:#5865F2;color:#fff;}
+.nav-btn.purple:hover{opacity:.88;}
+.lobby-body{display:flex;flex:1;overflow:hidden;}
+.lobby-main{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;}
+.lobby-sidebar{width:260px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
+.sec-title{font-family:'Silkscreen',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;padding-bottom:7px;border-bottom:1px solid var(--border);margin-bottom:9px;}
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.room-card{background:var(--panel);border:1px solid var(--border2);padding:14px;cursor:pointer;transition:border-color .2s,transform .12s,box-shadow .2s;display:flex;flex-direction:column;gap:8px;animation:slide-up .3s ease;}
+.room-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow);}
+.room-card.general{border-color:rgba(0,102,255,.35);background:linear-gradient(135deg,var(--panel),rgba(0,102,255,.04));}
+.rc-name{font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:1px;word-break:break-word;}
+.rc-meta{font-size:9px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;}
+.rc-lock{font-size:12px;}
+.rc-owner{font-size:9px;color:var(--purple);}
+.room-empty{color:var(--muted);font-size:11px;padding:24px 0;text-align:center;}
+.cr-form{display:flex;flex-direction:column;gap:10px;}
+.cr-label{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;display:block;}
+.cr-input{background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:12px;padding:8px 10px;outline:none;width:100%;transition:border-color .2s;}
+.cr-input:focus{border-color:var(--accent);}
+.cr-input::placeholder{color:var(--muted);font-size:11px;}
+.cr-btn{background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;font-family:'Silkscreen',monospace;font-size:10px;padding:10px;cursor:pointer;letter-spacing:1px;transition:opacity .2s;}
+.cr-btn:hover{opacity:.88;}
+.cr-size-row{display:flex;gap:8px;align-items:flex-end;}
+.cr-size-row .cr-field{flex:1;}
+.cr-number{background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:12px;padding:7px 9px;outline:none;width:100%;}
+.cr-number:focus{border-color:var(--accent);}
+
+/* ── GAME ── */
+#screen-game{position:fixed;inset:0;z-index:700;display:none;flex-direction:column;background:var(--bg);}
+#screen-game.on{display:flex;}
+.gh{height:44px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:10px;flex-shrink:0;font-size:10px;}
+.gh-room{font-family:'Silkscreen',monospace;font-size:11px;color:var(--accent);}
+.gh-sep{width:1px;height:18px;background:var(--border);}
+.gh-info{color:var(--muted);font-size:9px;}
+.gh-xy{color:var(--muted);font-size:9px;min-width:130px;}
+.gh-btns{display:flex;gap:6px;margin-left:auto;align-items:center;}
+.gh-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:9px;padding:4px 9px;cursor:pointer;transition:border-color .2s;letter-spacing:.5px;}
+.gh-btn:hover{border-color:var(--accent);}
+.gh-btn.red{border-color:rgba(229,57,53,.3);color:var(--red);}
+.gh-btn.red:hover{background:rgba(229,57,53,.1);}
+.gh-btn.admin{border-color:rgba(255,215,0,.5);color:#ffd700;background:rgba(255,215,0,.08);}
+.gh-btn.admin:hover{background:rgba(255,215,0,.15);}
+.export-scale-select{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:9px;padding:3px 5px;font-family:'JetBrains Mono',monospace;cursor:pointer;}
+.game-body{display:flex;flex:1;overflow:hidden;}
+.gsb{width:200px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+.gss{padding:10px 12px;border-bottom:1px solid var(--border);}
+.gsl{font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;}
+.cprev{height:34px;border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;padding:0 8px;gap:8px;transition:border-color .2s;margin-bottom:6px;}
+.cprev:hover{border-color:var(--accent);}
+.cprev-dot{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.cprev-hex{font-size:11px;letter-spacing:1px;}
+.hex-row{display:flex;gap:5px;margin-bottom:6px;}
+.hex-row input{flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:11px;padding:5px 7px;outline:none;}
+.hex-row input:focus{border-color:var(--accent);}
+.hex-row button{background:var(--accent);border:none;color:#fff;padding:0 9px;cursor:pointer;font-size:10px;}
+.cwheel-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:6px;}
+#colorWheel{border-radius:50%;cursor:crosshair;display:block;image-rendering:pixelated;}
+.cwheel-cursor{position:absolute;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #000;pointer-events:none;transform:translate(-50%,-50%);}
+.cwheel-container{position:relative;display:inline-block;}
+.lightness-wrap{width:100%;display:flex;flex-direction:column;gap:3px;}
+.lightness-label{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+#lightnessSlider{-webkit-appearance:none;width:100%;height:8px;outline:none;border-radius:0;border:1px solid var(--border2);cursor:pointer;}
+#lightnessSlider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #555;cursor:pointer;}
+.pal{display:flex;flex-wrap:wrap;gap:2px;}
+.sw{width:14px;height:14px;cursor:pointer;border:1px solid transparent;transition:transform .1s;border-radius:1px;}
+.sw:hover{transform:scale(1.25);border-color:var(--text);}
+.sw.on{border-color:var(--text);transform:scale(1.2);}
+.tools{display:flex;flex-wrap:wrap;gap:4px;}
+.tbtn{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:9px;padding:5px 7px;cursor:pointer;flex:1;min-width:70px;transition:border-color .2s,background .2s;letter-spacing:.3px;}
+.tbtn:hover{border-color:var(--accent);}
+.tbtn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+.brow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.bd{background:var(--text);border-radius:1px;cursor:pointer;opacity:.35;transition:opacity .15s,transform .1s;}
+.bd.on{opacity:1;transform:scale(1.15);}
+.undorow{display:flex;gap:4px;}
+#minimap-wrap canvas{width:100%;height:auto;display:block;cursor:crosshair;border:1px solid var(--border2);}
+#minimap-vp{position:absolute;border:1px solid var(--accent);background:rgba(0,102,255,.1);pointer-events:none;}
+#minimap-wrap{position:relative;}
+.gpl-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:9px;}
+.gpl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.vp{flex:1;overflow:hidden;position:relative;cursor:crosshair;}
+#cvs{display:block;}
+.zc{position:fixed;bottom:16px;right:16px;z-index:100;display:none;flex-direction:column;align-items:center;gap:3px;background:var(--panel);border:1px solid var(--border2);padding:4px;box-shadow:var(--shadow);}
+.zbtn{background:var(--bg2);border:1px solid var(--border);color:var(--text);width:28px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:border-color .2s;}
+.zbtn:hover{border-color:var(--accent);}
+.zlbl{font-size:9px;color:var(--muted);padding:2px 0;}
+
+/* ── CHAT ── */
+.chat-panel{width:220px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;}
+.chat-title{font-family:'Silkscreen',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);padding:9px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.chat-antispam{font-size:8px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);color:var(--purple);padding:2px 6px;border-radius:8px;}
+.chat-msgs{flex:1;overflow-y:auto;padding:8px;}
+.chat-msg{margin-bottom:6px;animation:slide-up .2s ease;}
+.chat-msg-name{font-size:9px;font-weight:700;}
+.chat-msg-text{font-size:10px;color:var(--text);word-break:break-word;line-height:1.5;}
+.chat-msg.system .chat-msg-name,.chat-msg.system .chat-msg-text{color:var(--muted);font-style:italic;}
+.chat-input-row{display:flex;border-top:1px solid var(--border);}
+.chat-input-row input{flex:1;background:var(--bg);border:none;color:var(--text);font-size:11px;padding:9px;outline:none;}
+.chat-input-row button{background:var(--accent);border:none;color:#fff;padding:0 12px;cursor:pointer;font-size:11px;}
+
+/* ── MODERATION PANEL ── */
+.mod-panel{position:fixed;top:0;right:0;bottom:0;width:320px;background:var(--panel);border-left:1px solid var(--border2);z-index:500;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;box-shadow:var(--shadow-lg);}
+.mod-panel.on{transform:translateX(0);}
+.mod-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.mod-head h3{font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:2px;flex:1;}
+.mod-close{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;}
+.mod-close:hover{color:var(--text);}
+.mod-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:16px;}
+.mod-section{display:flex;flex-direction:column;gap:8px;}
+.mod-sec-title{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.mod-player-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);}
+.mod-player-name{font-size:10px;flex:1;}
+.mod-actions{display:flex;gap:4px;flex-wrap:wrap;}
+.mod-act-btn{font-size:9px;padding:3px 7px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;transition:border-color .15s;white-space:nowrap;}
+.mod-act-btn:hover{border-color:var(--accent);}
+.mod-act-btn.danger{border-color:rgba(229,57,53,.4);color:var(--red);}
+.mod-act-btn.danger:hover{background:rgba(229,57,53,.1);}
+.mod-act-btn.warn{border-color:rgba(255,102,0,.4);color:var(--orange);}
+.mod-act-btn.warn:hover{background:rgba(255,102,0,.1);}
+.mod-act-btn.purple{border-color:rgba(139,92,246,.4);color:var(--purple);}
+.mod-act-btn.purple:hover{background:rgba(139,92,246,.1);}
+.mod-act-btn.green{border-color:rgba(0,204,102,.4);color:var(--green);}
+.mod-act-btn.green:hover{background:rgba(0,204,102,.1);}
+.mod-input{background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:11px;padding:7px 9px;outline:none;width:100%;}
+.mod-input:focus{border-color:var(--accent);}
+.mod-btn{background:var(--accent);border:none;color:#fff;font-size:10px;padding:8px 12px;cursor:pointer;width:100%;letter-spacing:.5px;}
+.mod-btn.red{background:var(--red);}
+.mod-btn.green{background:var(--green);}
+.mod-btn.orange{background:var(--orange);}
+.mod-btn.purple{background:var(--purple);}
+.banned-tag{font-size:9px;background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.3);color:var(--red);padding:2px 6px;display:inline-flex;align-items:center;gap:5px;}
+.banned-tag button{background:none;border:none;color:var(--red);cursor:pointer;font-size:10px;}
+#report-badge{background:var(--pink);color:#fff;font-size:8px;border-radius:8px;padding:1px 5px;display:none;vertical-align:middle;margin-left:4px;}
+.mod-report-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);}
+.mod-zone-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);}
+.mod-offline-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);}
+.offline-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;opacity:.5;}
+
+/* ── ADMIN PANEL ── */
+#screen-admin{position:fixed;inset:0;z-index:1100;background:var(--bg);display:none;flex-direction:column;}
+#screen-admin.on{display:flex;}
+.admin-nav{height:48px;background:#0a0a0a;border-bottom:2px solid #ffd700;display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;}
+.admin-title{font-family:'Silkscreen',monospace;font-size:13px;letter-spacing:3px;color:#ffd700;}
+.admin-body{display:flex;flex:1;overflow:hidden;}
+.admin-sidebar{width:200px;background:#0e0e0e;border-right:1px solid #222;display:flex;flex-direction:column;gap:0;overflow-y:auto;}
+.admin-tab{padding:12px 16px;font-size:10px;cursor:pointer;border-bottom:1px solid #1a1a1a;color:#888;letter-spacing:.5px;transition:background .15s,color .15s;}
+.admin-tab:hover{background:#1a1a1a;color:#fff;}
+.admin-tab.on{background:#1c1c00;color:#ffd700;border-left:3px solid #ffd700;}
+.admin-content{flex:1;overflow-y:auto;padding:20px;}
+.admin-card{background:#0e0e0e;border:1px solid #222;padding:16px;margin-bottom:12px;}
+.admin-card-title{font-family:'Silkscreen',monospace;font-size:9px;color:#ffd700;letter-spacing:2px;margin-bottom:10px;}
+.stat-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;}
+.stat-box{background:#0e0e0e;border:1px solid #333;padding:14px 18px;flex:1;min-width:120px;}
+.stat-num{font-family:'Silkscreen',monospace;font-size:24px;color:#ffd700;}
+.stat-label{font-size:9px;color:#666;letter-spacing:1px;margin-top:4px;}
+.admin-table{width:100%;border-collapse:collapse;font-size:10px;}
+.admin-table th{background:#111;color:#ffd700;padding:7px 10px;text-align:left;font-size:9px;letter-spacing:1px;border-bottom:1px solid #333;}
+.admin-table td{padding:7px 10px;border-bottom:1px solid #1a1a1a;color:#ccc;}
+.admin-table tr:hover td{background:#111;}
+.admin-badge{font-size:8px;padding:2px 6px;border-radius:8px;}
+.admin-badge.online{background:rgba(0,204,102,.2);color:#00cc66;border:1px solid rgba(0,204,102,.3);}
+.admin-badge.admin{background:rgba(255,215,0,.2);color:#ffd700;border:1px solid rgba(255,215,0,.3);}
+.admin-btn{font-size:9px;padding:3px 8px;border:1px solid #333;background:#1a1a1a;color:#ccc;cursor:pointer;transition:border-color .15s;}
+.admin-btn:hover{border-color:#ffd700;color:#ffd700;}
+.admin-btn.danger{border-color:rgba(229,57,53,.4);color:#e53935;}
+.admin-btn.danger:hover{background:rgba(229,57,53,.1);}
+.admin-search{background:#111;border:1px solid #333;color:#ccc;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;outline:none;width:100%;margin-bottom:12px;}
+.admin-search:focus{border-color:#ffd700;}
+.chat-log-entry{padding:4px 0;border-bottom:1px solid #1a1a1a;font-size:10px;}
+.chat-log-time{font-size:8px;color:#555;margin-right:6px;}
+.room-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;}
+
+/* ── CURSEURS ── */
+#cursor-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+.cursor-label{position:absolute;display:flex;align-items:center;gap:4px;top:0;left:0;pointer-events:none;font-size:9px;background:rgba(0,0,0,.55);color:#fff;padding:2px 6px;border-radius:3px;white-space:nowrap;transform-origin:top left;}
+.cursor-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cursor-name{max-width:80px;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── CONTEXT MENU ── */
+#ctx-menu{position:fixed;z-index:9500;background:var(--panel);border:1px solid var(--border2);box-shadow:var(--shadow-lg);min-width:180px;display:none;flex-direction:column;animation:pop-in .15s ease;}
+.ctx-info{font-size:9px;color:var(--muted);padding:7px 10px;border-bottom:1px solid var(--border);}
+.ctx-item{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;font-size:10px;transition:background .1s;}
+.ctx-item:hover{background:var(--bg2);}
+.ctx-item.danger{color:var(--red);}
+
+/* ── TOOLTIP ── */
+#tip{position:fixed;z-index:9000;background:var(--panel);border:1px solid var(--border2);padding:5px 9px;font-size:10px;pointer-events:none;display:none;align-items:center;gap:6px;box-shadow:var(--shadow);}
+.tdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--text);color:var(--panel);padding:7px 16px;font-size:11px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:9999;white-space:nowrap;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.on{display:flex;}
+.modal-box{background:var(--panel);border:1px solid var(--border2);padding:28px 32px;min-width:320px;max-width:92vw;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg);animation:pop-in .3s ease;}
+.modal-title{font-family:'Silkscreen',monospace;font-size:12px;letter-spacing:2px;}
+.modal-input{background:var(--bg);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:10px 12px;outline:none;width:100%;}
+.modal-input:focus{border-color:var(--accent);}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+.modal-btn{font-size:11px;padding:8px 16px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;transition:border-color .2s;}
+.modal-btn:hover{border-color:var(--accent);}
+.modal-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.modal-btn.danger{background:var(--red);color:#fff;border-color:var(--red);}
+.modal-err{font-size:10px;color:var(--pink);display:none;}
+.modal-ok{font-size:10px;color:var(--green);display:none;}
+
+/* Discord banner in modal */
+.discord-info-box{display:flex;align-items:center;gap:10px;background:rgba(88,101,242,.1);border:1px solid rgba(88,101,242,.3);padding:10px 12px;}
+.discord-info-box img{width:32px;height:32px;border-radius:50%;}
+.discord-info-text{font-size:10px;line-height:1.6;}
+.discord-info-text strong{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN DISCORD ═══ -->
+<div id="screen-login">
+  <div class="lglow"></div>
+  <div class="lbox">
+    <div class="llogo">PIXEL<br>WORLD</div>
+    <div class="lsub">Canvas collaboratif · Multi-rooms</div>
+    <div id="lerr" class="lerr"></div>
+    <a class="discord-btn" id="discord-login-btn" href="/auth/discord">
+      <svg viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+      CONNEXION AVEC DISCORD
+    </a>
+    <div class="linfo">
+      La connexion Discord est obligatoire pour accéder à PixelWorld.<br>
+      Tes données sont uniquement utilisées pour identifier ton compte.
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LOBBY ═══ -->
+<div id="screen-lobby">
+  <div class="lobby-nav">
+    <div class="llogo-sm">PIXELWORLD</div>
+    <div class="nav-sep"></div>
+    <div class="nav-user">
+      <img class="nav-avatar" id="nav-avatar" src="" alt="" style="display:none">
+      <div class="nav-dot" id="nav-dot"></div>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <div class="nav-name" id="nav-name">—</div>
+        <div class="nav-discord" id="nav-discord">—</div>
+      </div>
+    </div>
+    <div class="nav-sep"></div>
+    <button class="nav-btn" onclick="openRenameModal()">✏️ Pseudo</button>
+    <button class="nav-btn" onclick="toggleTheme()">☽ Thème</button>
+    <button class="nav-btn" id="btn-admin" style="display:none;border-color:rgba(255,215,0,.5);color:#ffd700;background:rgba(255,215,0,.06)" onclick="openAdmin()">⭐ Admin</button>
+    <button class="nav-btn red" onclick="doLogout()">⏻ Quitter</button>
+  </div>
+  <div class="lobby-body">
+    <div class="lobby-main">
+      <div>
+        <div class="sec-title">Rooms disponibles</div>
+        <div class="rooms-grid" id="rooms-grid"><div class="room-empty">Chargement…</div></div>
+      </div>
+    </div>
+    <div class="lobby-sidebar">
+      <div>
+        <div class="sec-title">Créer une room</div>
+        <div class="cr-form">
+          <div>
+            <label class="cr-label">Nom de la room</label>
+            <input class="cr-input" id="cr-name" placeholder="Ma super room" maxlength="32">
+          </div>
+          <div>
+            <label class="cr-label">Mot de passe (optionnel)</label>
+            <input class="cr-input" id="cr-pass" type="password" placeholder="Laisser vide = public" maxlength="64">
+          </div>
+          <div>
+            <label class="cr-label">Taille du canvas</label>
+            <div class="cr-size-row">
+              <div class="cr-field"><input class="cr-number" id="cr-w" type="number" value="800" min="100" max="2000"></div>
+              <span style="font-size:12px;color:var(--muted);padding-bottom:8px">×</span>
+              <div class="cr-field"><input class="cr-number" id="cr-h" type="number" value="600" min="100" max="2000"></div>
+            </div>
+          </div>
+          <div>
+            <label class="cr-label">Max joueurs</label>
+            <input class="cr-number" id="cr-max" type="number" value="50" min="2" max="200">
+          </div>
+          <button class="cr-btn" id="cr-btn">+ CRÉER LA ROOM</button>
+          <div id="cr-err" style="font-size:10px;color:var(--pink);display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GAME ═══ -->
+<div id="screen-game">
+  <div class="gh">
+    <div class="gh-room" id="gh-room">—</div>
+    <div class="gh-sep"></div>
+    <div class="gh-info" id="gh-info">0 joueurs</div>
+    <div class="gh-sep"></div>
+    <div class="gh-xy" id="gh-xy">x:— y:—</div>
+    <div class="gh-btns">
+      <select class="export-scale-select" id="export-scale" title="Résolution d'export">
+        <option value="1">1× (natif)</option><option value="2">2× (HD)</option>
+        <option value="4">4× (4K)</option><option value="8">8× (poster)</option>
+      </select>
+      <button class="gh-btn" onclick="exportPNG()" title="Ctrl+E">⬇ Export PNG</button>
+      <button class="gh-btn" id="btn-mod" onclick="toggleMod()" style="display:none">🛡 Modérer <span id="report-badge"></span></button>
+      <button class="gh-btn" onclick="setSettings(true)">⚙ Settings</button>
+      <button class="gh-btn red" onclick="leaveRoom()">← Lobby</button>
+    </div>
+  </div>
+  <div class="game-body">
+    <div class="gsb">
+      <div class="gss">
+        <div class="gsl">Couleur</div>
+        <div class="cprev" id="cprev" onclick="openColorWheel()">
+          <div class="cprev-dot" id="cprev-dot" style="background:#0066ff"></div>
+          <span class="cprev-hex" id="cprev-hex">#0066FF</span>
+          <span style="font-size:9px;color:var(--muted);margin-left:auto">🎨</span>
+        </div>
+        <div class="cwheel-wrap">
+          <div class="cwheel-container" id="cwheelContainer">
+            <canvas id="colorWheel" width="160" height="160"></canvas>
+            <div class="cwheel-cursor" id="cwheelCursor"></div>
+          </div>
+          <div class="lightness-wrap">
+            <span class="lightness-label">Luminosité</span>
+            <input type="range" id="lightnessSlider" min="5" max="95" value="50">
+          </div>
+        </div>
+        <div class="hex-row">
+          <input id="hexInput" type="text" placeholder="#0066FF" maxlength="7">
+          <button onclick="applyHex()">OK</button>
+        </div>
+      </div>
+      <div class="gss"><div class="gsl">Palette</div><div class="pal" id="pal"></div></div>
+      <div class="gss">
+        <div class="gsl">Outil</div>
+        <div class="tools">
+          <button class="tbtn on" id="t-draw" onclick="setTool('draw')" title="B">✏ Dessin</button>
+          <button class="tbtn" id="t-erase" onclick="setTool('erase')" title="E">◻ Gomme</button>
+          <button class="tbtn" id="t-pick" onclick="setTool('pick')" title="P">💉 Pipette</button>
+          <button class="tbtn" id="t-line" onclick="setTool('line')" title="L">╱ Ligne</button>
+        </div>
+      </div>
+      <div class="gss">
+        <div class="gsl">Taille pinceau</div>
+        <div class="brow">
+          <div class="bd on" style="width:6px;height:6px" data-s="1" onclick="setBrush(1)"></div>
+          <div class="bd" style="width:10px;height:10px" data-s="2" onclick="setBrush(2)"></div>
+          <div class="bd" style="width:14px;height:14px" data-s="4" onclick="setBrush(4)"></div>
+          <div class="bd" style="width:20px;height:20px" data-s="8" onclick="setBrush(8)"></div>
+          <div class="bd" style="width:26px;height:26px" data-s="16" onclick="setBrush(16)"></div>
+        </div>
+      </div>
+      <div class="gss">
+        <div class="gsl">Historique</div>
+        <div class="undorow">
+          <button class="tbtn" style="flex:1" onclick="undo()" title="Ctrl+Z">↩ Undo</button>
+          <button class="tbtn" style="flex:1" onclick="redo()" title="Ctrl+Y">↪ Redo</button>
+        </div>
+      </div>
+      <div class="gss">
+        <div class="gsl">Vue</div>
+        <div class="tools">
+          <button class="tbtn on" id="gbtn" onclick="toggleGrid()" title="G">⊞ Grille</button>
+          <button class="tbtn" onclick="goHome()" title="0">⊙ Origine</button>
+        </div>
+      </div>
+      <div class="gss" id="minimap-wrap">
+        <div class="gsl">Minimap</div>
+        <canvas id="minimap"></canvas>
+        <div id="minimap-vp"></div>
+      </div>
+      <div class="gss"><div class="gsl">Joueurs</div><div id="gpl-list"></div></div>
+    </div>
+    <div class="vp" id="vp">
+      <canvas id="cvs"></canvas>
+      <div id="cursor-overlay"></div>
+    </div>
+    <div class="chat-panel">
+      <div class="chat-title">💬 CHAT <span id="chat-antispam-badge" class="chat-antispam" style="display:none">🛡 Anti-spam</span></div>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" placeholder="Message…" maxlength="200" autocomplete="off">
+        <button id="chat-send">↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODERATION PANEL ═══ -->
+<div class="mod-panel" id="mod-panel">
+  <div class="mod-head">
+    <h3>🛡 MODÉRATION</h3>
+    <button class="mod-close" onclick="toggleMod()">✕</button>
+  </div>
+  <div class="mod-body">
+    <!-- Anti-spam toggle -->
+    <div class="mod-section">
+      <div class="mod-sec-title">🤖 Anti-spam</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:10px" id="antispam-status">Mode anti-spam : désactivé</span>
+        <button class="mod-act-btn purple" onclick="toggleAntiSpam()">Basculer</button>
+      </div>
+      <div style="font-size:9px;color:var(--muted)">Limite les messages identiques répétés et le flood.</div>
+    </div>
+
+    <!-- Ban de salon -->
+    <div class="mod-section">
+      <div class="mod-sec-title">🔨 Bannir du salon</div>
+      <div style="display:flex;gap:6px">
+        <input class="mod-input" id="ban-room-pseudo" placeholder="Pseudo à bannir…" style="flex:1;font-size:10px">
+        <button class="mod-act-btn danger" onclick="banFromRoom()">Ban</button>
+      </div>
+      <div>
+        <label style="font-size:9px;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="ban-room-ip"> Bannir aussi l'IP
+        </label>
+      </div>
+      <input class="mod-input" id="ban-room-reason" placeholder="Raison (optionnelle)…" style="font-size:10px">
+    </div>
+
+    <!-- Export / Import room -->
+    <div class="mod-section">
+      <div class="mod-sec-title">📦 Export / Import room</div>
+      <div style="display:flex;gap:6px">
+        <button class="mod-btn" style="background:var(--purple);flex:1" onclick="exportRoom()">⬇ Exporter</button>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:9px;flex:1"><input type="checkbox" id="import-merge"> Fusionner (ne pas effacer)</label>
+        <button class="mod-btn" style="background:var(--green)" onclick="triggerImport()">⬆ Importer un fichier</button>
+        <input type="file" id="import-file-input" accept=".pwroom,.json" style="display:none" onchange="handleImportFile(event)">
+        <div id="import-status" style="font-size:9px;display:none"></div>
+      </div>
+    </div>
+
+    <!-- Joueurs hors-ligne -->
+    <div class="mod-section">
+      <div class="mod-sec-title">👻 Joueurs récemment déconnectés</div>
+      <div id="mod-offline-list" style="font-size:9px;color:var(--muted)">Aucun joueur récemment déconnecté</div>
+    </div>
+
+    <!-- Signalements -->
+    <div class="mod-section">
+      <div class="mod-sec-title">🚨 Signalements <span id="report-badge-panel" style="font-size:8px;background:var(--pink);color:#fff;border-radius:8px;padding:1px 5px;display:none"></span></div>
+      <div id="mod-reports-list" style="font-size:9px;color:var(--muted)">Aucun signalement</div>
+    </div>
+
+    <!-- Zones protégées -->
+    <div class="mod-section">
+      <div class="mod-sec-title">🔒 Zones protégées</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input class="mod-input" id="zone-label-input" placeholder="Nom de la zone…" style="flex:1;font-size:10px">
+        <button class="mod-act-btn purple" onclick="addProtectedZone()">+ Zone</button>
+      </div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:6px">Clic + glisser sur le canvas pour définir la zone.</div>
+      <div id="mod-zones-list" style="font-size:9px;color:var(--muted)">Aucune zone protégée</div>
+    </div>
+
+    <!-- Joueurs en ligne -->
+    <div class="mod-section">
+      <div class="mod-sec-title">Joueurs en ligne</div>
+      <div id="mod-players"></div>
+    </div>
+
+    <!-- Bannis -->
+    <div class="mod-section">
+      <div class="mod-sec-title">Liste des bannis</div>
+      <div id="mod-banned"></div>
+    </div>
+
+    <!-- Mot de passe (owner) -->
+    <div class="mod-section" id="mod-pw-section">
+      <div class="mod-sec-title">Mot de passe (propriétaire)</div>
+      <input class="mod-input" id="mod-pw-input" type="password" placeholder="Nouveau mdp (vide = supprimer)">
+      <button class="mod-btn" onclick="changePassword()">💾 Mettre à jour</button>
+    </div>
+
+    <!-- Canvas -->
+    <div class="mod-section">
+      <div class="mod-sec-title">Gestion du canvas</div>
+      <button class="mod-btn red" onclick="clearCanvasFull()" style="margin-bottom:6px">🗑 Effacer tout le canvas</button>
+      <button class="mod-btn orange" onclick="resizeCanvasPrompt()" id="mod-resize-btn">↔ Redimensionner (owner)</button>
+    </div>
+
+    <!-- Raccourcis -->
+    <div class="mod-section">
+      <div class="mod-sec-title">Raccourcis clavier</div>
+      <div style="font-size:9px;color:var(--muted);line-height:2">
+        B=Dessin · E=Gomme · P=Pipette · L=Ligne<br>
+        G=Grille · 0=Origine · +/−=Zoom<br>
+        Ctrl+Z=Undo · Ctrl+Y=Redo · Ctrl+E=Export<br>
+        Clic droit=Menu contextuel · Esc=Annuler zone
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN PANEL ═══ -->
+<div id="screen-admin">
+  <div class="admin-nav">
+    <div class="admin-title">⭐ PANEL ADMIN — PIXELWORLD</div>
+    <button onclick="closeAdmin()" style="margin-left:auto;background:#1a1a1a;border:1px solid #ffd700;color:#ffd700;font-size:10px;padding:5px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace">✕ Fermer</button>
+    <button onclick="refreshAdminStats()" style="background:#1a1a1a;border:1px solid #333;color:#ccc;font-size:10px;padding:5px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace">↻ Actualiser</button>
+  </div>
+  <div class="admin-body">
+    <div class="admin-sidebar">
+      <div class="admin-tab on" onclick="adminShowTab('overview')" id="atab-overview">📊 Vue d'ensemble</div>
+      <div class="admin-tab" onclick="adminShowTab('rooms')" id="atab-rooms">🏠 Salons actifs</div>
+      <div class="admin-tab" onclick="adminShowTab('accounts')" id="atab-accounts">👤 Comptes connectés</div>
+      <div class="admin-tab" onclick="adminShowTab('chatlogs')" id="atab-chatlogs">💬 Logs de chat</div>
+      <div class="admin-tab" onclick="adminShowTab('bans')" id="atab-bans">🔨 Bans</div>
+    </div>
+    <div class="admin-content" id="admin-content">
+      <div style="color:#555;font-size:11px">Chargement…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ZOOM -->
+<div class="zc" id="zc">
+  <button class="zbtn" onclick="doZoom(1.25)">+</button>
+  <div class="zlbl" id="zlbl">100%</div>
+  <button class="zbtn" onclick="doZoom(0.8)">−</button>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="ctx-info" id="ctx-pixel-info">—</div>
+  <div class="ctx-item" id="ctx-pick-btn">💉 Pipette couleur</div>
+  <div class="ctx-item danger" id="ctx-erase-btn">✕ Effacer mon pixel</div>
+  <div class="ctx-item danger" id="ctx-report-btn">🚨 Signaler ce pixel</div>
+</div>
+
+<!-- TOOLTIP -->
+<div id="tip"><div class="tdot" id="tipdot"></div><span id="tipname">—</span></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- MODAL: mot de passe room -->
+<div class="modal-overlay" id="modal-pw">
+  <div class="modal-box">
+    <div class="modal-title">🔒 ROOM PROTÉGÉE</div>
+    <div style="font-size:11px;color:var(--muted)">Cette room requiert un mot de passe.</div>
+    <input class="modal-input" id="modal-pw-input" type="password" placeholder="Mot de passe…">
+    <div class="modal-err" id="modal-pw-err"></div>
+    <div class="modal-btns">
+      <button class="modal-btn" onclick="closeModal('modal-pw')">Annuler</button>
+      <button class="modal-btn primary" id="modal-pw-ok">Rejoindre →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: settings -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal-box" style="min-width:360px">
+    <div class="modal-title">⚙ SETTINGS</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px">Thème</span>
+        <div style="display:flex;gap:6px">
+          <button class="modal-btn" onclick="setTheme('light')">☀ Clair</button>
+          <button class="modal-btn" onclick="setTheme('dark')">☾ Sombre</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px">Mes pixels dans la room</span>
+        <button class="modal-btn" style="border-color:rgba(229,57,53,.4);color:var(--red)" onclick="clearOwnPixels()">✕ Effacer les miens</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px">Changer mon pseudo</span>
+        <button class="modal-btn" onclick="closeModal('modal-settings');openRenameModal()">✏️ Renommer</button>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn primary" onclick="closeModal('modal-settings')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: resize canvas -->
+<div class="modal-overlay" id="modal-resize">
+  <div class="modal-box">
+    <div class="modal-title">↔ REDIMENSIONNER</div>
+    <div style="font-size:10px;color:var(--muted)">Attention : les pixels hors-limites seront supprimés.</div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input class="modal-input" id="resize-w" type="number" min="100" max="2000" placeholder="Largeur" style="flex:1">
+      <span style="color:var(--muted)">×</span>
+      <input class="modal-input" id="resize-h" type="number" min="100" max="2000" placeholder="Hauteur" style="flex:1">
+    </div>
+    <div class="modal-err" id="resize-err"></div>
+    <div class="modal-btns">
+      <button class="modal-btn" onclick="closeModal('modal-resize')">Annuler</button>
+      <button class="modal-btn primary" onclick="doResizeCanvas()">Redimensionner</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: changer pseudo -->
+<div class="modal-overlay" id="modal-rename">
+  <div class="modal-box">
+    <div class="modal-title">✏️ CHANGER MON PSEUDO</div>
+    <div id="rename-discord-info" class="discord-info-box" style="display:none">
+      <img id="rename-avatar" src="" alt="">
+      <div class="discord-info-text">Connecté en tant que <strong id="rename-discord-name">—</strong><br>Ton pseudo affiché peut être différent de ton nom Discord.</div>
+    </div>
+    <input class="modal-input" id="rename-input" type="text" placeholder="Nouveau pseudo…" maxlength="18" autocomplete="off">
+    <div style="font-size:9px;color:var(--muted)">2 à 18 caractères — lettres, chiffres, _ - .</div>
+    <div class="modal-err" id="rename-err"></div>
+    <div class="modal-ok" id="rename-ok"></div>
+    <div class="modal-btns">
+      <button class="modal-btn" onclick="closeModal('modal-rename')">Annuler</button>
+      <button class="modal-btn primary" onclick="doRename()">Valider ✓</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
