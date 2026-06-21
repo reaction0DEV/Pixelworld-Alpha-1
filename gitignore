@@ -1,0 +1,25 @@
+# Dépendances Node
+node_modules/
+
+# Données utilisateurs (privées)
+data/rooms.json
+data/accounts.json
+data/banned_ips.json
+
+# Secrets
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editeurs
+.vscode/
+.idea/
+*.swp

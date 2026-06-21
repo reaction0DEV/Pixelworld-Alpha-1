@@ -1,0 +1,211 @@
+================================================================
+  PIXELWORLD v3 -- Manuel de deploiement et configuration
+================================================================
+
+
+----------------------------------------------------------------
+1. PREREQUIS
+----------------------------------------------------------------
+
+- Node.js 18+        verifier : node --version
+- npm 8+             verifier : npm --version
+- Git                verifier : git --version
+- Un compte Discord  : discord.com
+- Un nom de domaine  : pour la production uniquement
+
+
+----------------------------------------------------------------
+2. INSTALLATION
+----------------------------------------------------------------
+
+2.1 Cloner le repo GitHub
+--------------------------
+  git clone https://github.com/ton-pseudo/pixelworld.git
+  cd pixelworld
+
+2.2 Installer les dependances
+------------------------------
+  npm install
+
+  /!\ Ne jamais pusher node_modules/ sur GitHub.
+
+2.3 Creer le fichier .env
+--------------------------
+Creer un fichier ".env" a la racine du projet :
+
+  DISCORD_CLIENT_ID=ton_client_id
+  DISCORD_CLIENT_SECRET=ton_client_secret
+  DISCORD_REDIRECT_URI=http://localhost:3000/auth/discord/callback
+  PORT=3000
+
+  /!\ Ne jamais publier .env sur GitHub. Il contient tes secrets.
+
+
+----------------------------------------------------------------
+3. CONFIGURATION DISCORD OAUTH2
+----------------------------------------------------------------
+
+Etape 1 - Creer l'application
+  1. Aller sur https://discord.com/developers/applications
+  2. Cliquer "New Application" -> donner un nom (ex: PixelWorld)
+  3. Aller dans l'onglet "OAuth2" dans le menu gauche
+
+Etape 2 - Recuperer les cles
+  - Copier le Client ID
+  - Cliquer "Reset Secret" puis copier le Client Secret
+
+Etape 3 - Ajouter le Redirect URI
+  Dans "Redirects", cliquer "Add Redirect" et entrer :
+
+  En local :
+    http://localhost:3000/auth/discord/callback
+
+  En production :
+    https://ton-domaine.com/auth/discord/callback
+
+  Cliquer "Save Changes" pour valider.
+
+Etape 4 - Configurer les admins
+  Dans server.js ligne ~35, ajouter ton Discord ID :
+
+    const ADMIN_DISCORD_IDS = new Set([
+      '123456789012345678',  // ton Discord ID
+    ]);
+
+  Pour trouver ton Discord ID :
+    Discord -> Parametres -> Avance -> Mode developpeur ON
+    -> clic droit sur ton profil -> "Copier l'identifiant"
+
+
+----------------------------------------------------------------
+4. LANCER EN LOCAL
+----------------------------------------------------------------
+
+  npm start
+
+  Ouvrir http://localhost:3000 dans le navigateur.
+
+  Le serveur cree automatiquement le dossier data/ avec :
+    - rooms.json       : rooms persistees
+    - accounts.json    : comptes Discord
+    - banned_ips.json  : IPs bannies
+
+
+----------------------------------------------------------------
+5. MISE EN PRODUCTION (Raspberry Pi + domaine)
+----------------------------------------------------------------
+
+5.1 Prerequis reseau
+  Dans ta box/routeur, rediriger vers l'IP du Raspberry Pi :
+    Port 80  TCP -> Raspberry Pi:80   (verification HTTPS)
+    Port 443 TCP -> Raspberry Pi:443  (HTTPS public)
+
+  Dans ton DNS (chez ton registrar) :
+    Type  : A
+    Nom   : ton-domaine.com  (ou @)
+    Valeur: ton IP publique  <- verifier sur whatismyip.com
+
+5.2 Installer Caddy (HTTPS automatique)
+  Caddy gere les certificats Let's Encrypt tout seul.
+
+  sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+    | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+    | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+  sudo apt update && sudo apt install caddy
+
+5.3 Configurer Caddy
+  sudo nano /etc/caddy/Caddyfile
+
+  Contenu (remplacer ton-domaine.com) :
+
+    ton-domaine.com {
+        reverse_proxy localhost:3000
+    }
+
+  sudo systemctl reload caddy
+  sudo systemctl enable caddy
+  sudo systemctl status caddy
+
+  [i] Caddy renouvelle le certificat automatiquement. Rien a faire.
+
+5.4 Mettre a jour le .env pour la production
+  DISCORD_CLIENT_ID=ton_client_id
+  DISCORD_CLIENT_SECRET=ton_client_secret
+  DISCORD_REDIRECT_URI=https://ton-domaine.com/auth/discord/callback
+  PORT=3000
+
+  /!\ Mettre a jour aussi le Redirect URI dans le Discord Developer
+      Portal pour passer en https.
+
+5.5 Faire tourner PixelWorld en permanence avec PM2
+  npm install -g pm2
+  pm2 start server.js --name pixelworld
+  pm2 save
+  pm2 startup
+
+  [i] "pm2 startup" affiche une commande a copier-coller
+      pour demarrer automatiquement au boot du Raspberry Pi.
+
+
+----------------------------------------------------------------
+6. PUBLIER SUR GITHUB
+----------------------------------------------------------------
+
+6.1 Fichier .gitignore
+  Creer un fichier .gitignore a la racine du projet :
+
+    node_modules/
+    data/rooms.json
+    data/accounts.json
+    data/banned_ips.json
+    .env
+    .env.local
+    *.log
+    .DS_Store
+    Thumbs.db
+
+  Sur Windows avec VS Code :
+    Nouveau fichier -> taper exactement ".gitignore" -> Entree
+
+6.2 Premier push
+  git init
+  git add .
+  git commit -m "PixelWorld v3 initial"
+  git branch -M main
+  git remote add origin https://github.com/ton-pseudo/ton-repo.git
+  git push -u origin main
+
+6.3 Structure du repo sur GitHub
+  pixelworld/
+  ├── .gitignore
+  ├── README.md
+  ├── package.json
+  ├── package-lock.json
+  ├── server.js
+  └── public/
+      ├── index.html
+      └── app.js
+
+  [i] Le dossier data/ n'est pas sur GitHub (donnees privees).
+      Il se recree automatiquement au premier demarrage.
+
+
+----------------------------------------------------------------
+7. RECAPITULATIF -- LES 4 VALEURS A CONFIGURER
+----------------------------------------------------------------
+
+  Variable                Ou la trouver
+  ----------------------  ----------------------------------------
+  DISCORD_CLIENT_ID       Discord Dev Portal -> OAuth2
+  DISCORD_CLIENT_SECRET   Discord Dev Portal -> OAuth2 -> Reset Secret
+  DISCORD_REDIRECT_URI    Doit correspondre exactement au portail
+  ADMIN_DISCORD_IDS       Discord -> Parametres -> Avance
+  (dans server.js)        -> Mode dev -> clic droit profil
+                          -> "Copier l'identifiant"
+
+
+================================================================
+  PixelWorld v3 -- fin du manuel
+================================================================
