@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════════════════════
    PIXELWORLD CLIENT v3
    + Connexion Discord obligatoire
@@ -236,6 +237,7 @@ socket.on('room:joined', (data) => {
   for (const [k, v] of Object.entries(data.canvas || {})) pixels.set(k, v);
   mmDirty = true;
   showGame();
+  render(); // ← dessiner le canvas après chargement des pixels
   updateMinimap(true);
   toast(`Room "${roomInfo.name}" rejointe !${isOwner ? ' 👑 Propriétaire' : ''}`);
 
@@ -284,7 +286,9 @@ socket.on('pixel:batch', (changes) => {
 socket.on('canvas:full', (canvas) => {
   pixels.clear();
   for (const [k, v] of Object.entries(canvas)) pixels.set(k, v);
-  mmDirty = true; render(); toast('Canvas mis à jour');
+  mmDirty = true;
+  render();
+  toast('Canvas mis à jour');
 });
 
 socket.on('cursor:update', (data) => {
@@ -1269,4 +1273,3 @@ document.getElementById('rename-input').addEventListener('keydown', e => { if (e
   // Appliquer l'auth Discord au chargement
   initAuth();
 })();
-
